@@ -6,7 +6,10 @@ export class SecurityManager {
   // Simple encryption for sensitive data
   static encrypt(data: string): string {
     try {
-      const encoded = btoa(unescape(encodeURIComponent(data)));
+      const encoder = new TextEncoder();
+      const bytes = encoder.encode(data);
+      const binaryString = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
+      const encoded = btoa(binaryString);
       return encoded.split('').reverse().join('');
     } catch (error) {
       console.error('Encryption failed:', error);
@@ -18,7 +21,13 @@ export class SecurityManager {
   static decrypt(encryptedData: string): string {
     try {
       const reversed = encryptedData.split('').reverse().join('');
-      return decodeURIComponent(escape(atob(reversed)));
+      const binaryString = atob(reversed);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const decoder = new TextDecoder();
+      return decoder.decode(bytes);
     } catch (error) {
       console.error('Decryption failed:', error);
       return encryptedData;
