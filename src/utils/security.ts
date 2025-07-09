@@ -20,8 +20,13 @@ export class SecurityManager {
       // More robust error handling for decryption
       if (!encryptedData || encryptedData.trim() === '') return '';
       
+      // More robust error handling for decryption
+      if (!encryptedData || encryptedData.trim() === '') return '';
+      
       const reversed = encryptedData.split('').reverse().join('');
       const decoded = atob(reversed);
+      
+      return decodeURIComponent(escape(decoded));
       
       return decodeURIComponent(escape(decoded));
     } catch (error) {
@@ -81,13 +86,38 @@ export class SecurityManager {
   static extendSession(): void {
     try {
       const encryptedSession = localStorage.getItem('ormen_session');
-      if (!encryptedSession) return;
+      if (!encryptedSession || encryptedSession.trim() === '') {
+        // Clear invalid session data
+        localStorage.removeItem('ormen_session');
+        return false;
+      }
       
-      const sessionData = JSON.parse(this.decrypt(encryptedSession));
       sessionData.expires = Date.now() + this.SESSION_TIMEOUT;
       
-      localStorage.setItem('ormen_session', this.encrypt(JSON.stringify(sessionData)));
+      const decryptedData = this.decrypt(encryptedSession);
+      if (!decryptedData || decryptedData.trim() === '') {
+        // Clear corrupted session data
+        localStorage.removeItem('ormen_session');
+        return false;
+      }
+      
+      try {
+        const sessionData = JSON.parse(decryptedData);
+        if (!sessionData || !sessionData.expires) {
+          localStorage.removeItem('ormen_session');
+          return false;
+        }
+        
+        return Date.now() < sessionData.expires;
+      } catch (jsonError) {
+        console.error('Failed to parse session JSON:', jsonError);
+        localStorage.removeItem('ormen_session');
+        return false;
+      }
+      
     } catch (error) {
+      console.error('Session validation failed:', error);
+      localStorage.removeItem('ormen_session');
       console.error('Session extension failed:', error);
     }
   }
