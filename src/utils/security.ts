@@ -58,12 +58,19 @@ export class SecurityManager {
       const encryptedSession = localStorage.getItem('ormen_session');
       if (!encryptedSession || encryptedSession === '') return false;
       
-      const sessionData = JSON.parse(this.decrypt(encryptedSession));
+      const decryptedData = this.decrypt(encryptedSession);
+      if (!decryptedData || decryptedData.trim() === '') {
+        localStorage.removeItem('ormen_session');
+        return false;
+      }
+      
+      const sessionData = JSON.parse(decryptedData);
       if (!sessionData || !sessionData.expires) return false;
       
       return Date.now() < sessionData.expires;
     } catch (error) {
       console.error('Session validation failed:', error);
+      localStorage.removeItem('ormen_session');
       return false;
     }
   }
