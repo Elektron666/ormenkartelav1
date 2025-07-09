@@ -1,0 +1,11 @@
+@@ .. @@
+ android {
+     namespace "com.ormen.tekstil"
+     compileSdkVersion rootProject.ext.compileSdkVersion
++    compileOptions {
++        sourceCompatibility JavaVersion.VERSION_17
++        targetCompatibility JavaVersion.VERSION_17
++    }
+     defaultConfig {
+         applicationId "com.ormen.tekstil"
+         minSdkVersion rootProject.ext.minSdkVersion
