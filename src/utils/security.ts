@@ -6,10 +6,7 @@ export class SecurityManager {
   // Simple encryption for sensitive data
   static encrypt(data: string): string {
     try {
-      const encoder = new TextEncoder();
-      const bytes = encoder.encode(data);
-      const binaryString = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
-      const encoded = btoa(binaryString);
+      const encoded = btoa(unescape(encodeURIComponent(data)));
       return encoded.split('').reverse().join('');
     } catch (error) {
       console.error('Encryption failed:', error);
@@ -21,21 +18,12 @@ export class SecurityManager {
   static decrypt(encryptedData: string): string {
     try {
       // More robust error handling for decryption
-      if (!encryptedData) return '';
+      if (!encryptedData || encryptedData.trim() === '') return '';
       
-      try {
-        const reversed = encryptedData.split('').reverse().join('');
-        return decodeURIComponent(escape(atob(reversed)));
-      } catch (decodeError) {
-        console.warn('Failed to decode session data:', decodeError);
-        return '';
-      }
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      const decoder = new TextDecoder();
-      return decoder.decode(bytes);
+      const reversed = encryptedData.split('').reverse().join('');
+      const decoded = atob(reversed);
+      
+      return decodeURIComponent(escape(decoded));
     } catch (error) {
       console.error('Decryption failed:', error);
       return '';
@@ -56,18 +44,33 @@ export class SecurityManager {
   static validateSession(): boolean {
     try {
       const encryptedSession = localStorage.getItem('ormen_session');
-      if (!encryptedSession || encryptedSession === '') return false;
-      
-      const decryptedData = this.decrypt(encryptedSession);
-      if (!decryptedData || decryptedData.trim() === '') {
+      if (!encryptedSession || encryptedSession.trim() === '') {
+        // Clear invalid session data
         localStorage.removeItem('ormen_session');
         return false;
       }
       
-      const sessionData = JSON.parse(decryptedData);
-      if (!sessionData || !sessionData.expires) return false;
+      const decryptedData = this.decrypt(encryptedSession);
+      if (!decryptedData || decryptedData.trim() === '') {
+        // Clear corrupted session data
+        localStorage.removeItem('ormen_session');
+        return false;
+      }
       
-      return Date.now() < sessionData.expires;
+      try {
+        const sessionData = JSON.parse(decryptedData);
+        if (!sessionData || !sessionData.expires) {
+          localStorage.removeItem('ormen_session');
+          return false;
+        }
+        
+        return Date.now() < sessionData.expires;
+      } catch (jsonError) {
+        console.error('Failed to parse session JSON:', jsonError);
+        localStorage.removeItem('ormen_session');
+        return false;
+      }
+      
     } catch (error) {
       console.error('Session validation failed:', error);
       localStorage.removeItem('ormen_session');
