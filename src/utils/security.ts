@@ -20,8 +20,16 @@ export class SecurityManager {
   // Simple decryption
   static decrypt(encryptedData: string): string {
     try {
-      const reversed = encryptedData.split('').reverse().join('');
-      const binaryString = atob(reversed);
+      // More robust error handling for decryption
+      if (!encryptedData) return '';
+      
+      try {
+        const reversed = encryptedData.split('').reverse().join('');
+        return decodeURIComponent(escape(atob(reversed)));
+      } catch (decodeError) {
+        console.warn('Failed to decode session data:', decodeError);
+        return '';
+      }
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
@@ -30,7 +38,7 @@ export class SecurityManager {
       return decoder.decode(bytes);
     } catch (error) {
       console.error('Decryption failed:', error);
-      return encryptedData;
+      return '';
     }
   }
   
@@ -48,11 +56,14 @@ export class SecurityManager {
   static validateSession(): boolean {
     try {
       const encryptedSession = localStorage.getItem('ormen_session');
-      if (!encryptedSession) return false;
+      if (!encryptedSession || encryptedSession === '') return false;
       
       const sessionData = JSON.parse(this.decrypt(encryptedSession));
+      if (!sessionData || !sessionData.expires) return false;
+      
       return Date.now() < sessionData.expires;
     } catch (error) {
+      console.error('Session validation failed:', error);
       return false;
     }
   }
