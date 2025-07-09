@@ -17,18 +17,19 @@ export class SecurityManager {
   // Simple decryption
   static decrypt(encryptedData: string): string {
     try {
-      // More robust error handling for decryption
-      if (!encryptedData || encryptedData.trim() === '') return '';
-      
-      // More robust error handling for decryption
-      if (!encryptedData || encryptedData.trim() === '') return '';
+      // Check for empty or invalid input
+      if (!encryptedData || typeof encryptedData !== 'string' || encryptedData.trim() === '') {
+        return '';
+      }
       
       const reversed = encryptedData.split('').reverse().join('');
-      const decoded = atob(reversed);
-      
-      return decodeURIComponent(escape(decoded));
-      
-      return decodeURIComponent(escape(decoded));
+      try {
+        const decoded = atob(reversed);
+        return decodeURIComponent(escape(decoded));
+      } catch (e) {
+        console.error('Base64 decoding or URI decoding failed:', e);
+        return '';
+      }
     } catch (error) {
       console.error('Decryption failed:', error);
       return '';
@@ -75,7 +76,6 @@ export class SecurityManager {
         localStorage.removeItem('ormen_session');
         return false;
       }
-      
     } catch (error) {
       console.error('Session validation failed:', error);
       localStorage.removeItem('ormen_session');
@@ -87,38 +87,31 @@ export class SecurityManager {
     try {
       const encryptedSession = localStorage.getItem('ormen_session');
       if (!encryptedSession || encryptedSession.trim() === '') {
-        // Clear invalid session data
-        localStorage.removeItem('ormen_session');
-        return false;
+        return;
       }
-      
-      sessionData.expires = Date.now() + this.SESSION_TIMEOUT;
       
       const decryptedData = this.decrypt(encryptedSession);
       if (!decryptedData || decryptedData.trim() === '') {
-        // Clear corrupted session data
         localStorage.removeItem('ormen_session');
-        return false;
+        return;
       }
       
       try {
         const sessionData = JSON.parse(decryptedData);
-        if (!sessionData || !sessionData.expires) {
+        if (!sessionData) {
           localStorage.removeItem('ormen_session');
-          return false;
+          return;
         }
         
-        return Date.now() < sessionData.expires;
+        sessionData.expires = Date.now() + this.SESSION_TIMEOUT;
+        localStorage.setItem('ormen_session', this.encrypt(JSON.stringify(sessionData)));
       } catch (jsonError) {
-        console.error('Failed to parse session JSON:', jsonError);
+        console.error('Failed to parse or update session:', jsonError);
         localStorage.removeItem('ormen_session');
-        return false;
       }
-      
     } catch (error) {
-      console.error('Session validation failed:', error);
-      localStorage.removeItem('ormen_session');
       console.error('Session extension failed:', error);
+      localStorage.removeItem('ormen_session');
     }
   }
   
